@@ -227,8 +227,10 @@ elif trackmethod == 'Cannot':
 else:
     raise SystemExit('Invalid track method option')
 
-TrackPoints.linkpoints(curdata, DataColumns=['Time', 'X', 'Y', 'Major'],
-               GroupNameColumn='ImGroup', BlobNameColumn='blobID', name1=0)
+TrackPoints.linkpoints(curdata, DataColumns=['X', 'Y'],
+                       InfoColumns=['Time', 'Major'],
+                        GroupNameColumn='ImGroup', BlobNameColumn='blobID',
+                        name1=0, ColWeights=[1, 1])
 
 # # Print XY and volume data for grouped blobs.
 # curgroups = curdata.groupby('blobID')
@@ -253,7 +255,7 @@ colorlist = 'rgbcmyk'
 markerlist = 'o^sx+D'
 for k in set(curdata['blobID'].values.tolist()):
     dfsub = curdata[curdata['blobID']==k]
-    colval = colorlist[k%len(colorlist)]
-    markval = markerlist[k%len(markerlist)]
+    colval = colorlist[int(k)%len(colorlist)]
+    markval = markerlist[int(k)%len(markerlist)]
     ax.scatter(dfsub['Time'].values, dfsub['Volume'].values, color=colval,
                marker=markval, alpha=0.4)
