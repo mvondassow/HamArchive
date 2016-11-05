@@ -5,37 +5,57 @@ Created on Tue Oct 18 19:56:12 2016
 @author: Michelangelo
 
 Group and analyze blobs (embryos) from ImageJ macro output, given information
-in info file.
+in info file. Put into dataframe 'curdata'; process, link blobs, and plot.
+
+Classes and functions:
+---------------------------
+BlobViewer class & methods :
+    Takes dataframe (curdata) and folder information, reads in image files, and
+    creates a figure window that user can advance/decrement through to see
+    whether blobs/ROIs were linked correctly.
+seqprocess
+    Import and process data from ImageJ macro.
 
 Requires:
+--------
 •Tab delimited file (with appropriate format and labels) containing info needed
 to identify breaks in sequence, or measurements to treat specially.
 •Tab delimited file with appropriate columns and labels containing data for
 each sequence
 •Scale info (CURRENTLY CODED IN SCRIPT)
 •Directory path for files (CURRENTLY CODED IN SCRIPT)
+Modules/packages:
+    pandas, numpy, json, matplotlib.pyplot, skimage.external.tifffile,
+    TrackPoints
 
-'''
-# Steps to process files from ImageJ results
+Steps to process files from ImageJ results
+------------------------------------------
 1) Get data in.
 
 2) Combine the following steps into one loop.
  2a: Split 'Label' to get time stamps and file codes
- 2b: calculate volume
+ 2b: Calculate volume
  2c: Divide data into two sets (before and after transition) and delete frames
  during transition (identify manually)
+ 2d: For sequences split into separate parts in different polders, combine data
+ from separate parts indo dataframe (curdata) if requested.
+ 2d: Divide images into groups based on tracking method user entered in info
+ file
 
-3) Match ROIs from one frame to next based on overlap in XY center. In at
- least one case, an embryo was missed in one frame (crossed edge) so join if
- overlap is close between every other frame as well.
-'''
+3) Match ROIs (blobs) from one frame to next based on overlap in XY center. In
+ at least one case, an embryo was missed in one frame (crossed edge) so join if
+ overlap is close to blob that appeared earlier in same image group.
 
+4) Plot volume data.
+
+5) Show image sequence with labeled blobs
 """
 import pandas
 import numpy as np
 import json
 import TrackPoints
 import matplotlib.pyplot as plt
+import skimage.external.tifffile as tifmod
 
 # Parent directory
 parentdir = 'C:\\Users\\Michelangelo\\Documents\\Ham\\'
@@ -44,6 +64,127 @@ infofile = parentdir + 'CellVolumeRegulation.txt'
 
 # Scale in images
 MicronsPerPixel = 0.338774005
+
+
+class BlobViewer:
+    def __init__(self, blobdata, folderlist, scale=10):
+        """
+        Create a event-driven figure with which one can scroll through images
+        in image sequence and see blobs labeled by 'blobID' at XY centers.
+        Image files are found in folders of folderlist, and referred to by info
+        in blobdata dataframe.
+
+        Actions (when mouse is within figure axes) :
+        -------
+        '.' key press : show next image in sequence, & corresponding blob IDs
+        ',' key press : show previous image in sequence, & its blob IDs
+        'c' key press : close figure window
+
+        Parameters :
+        ------------
+        blobdata : pandas dataframe
+            Must contain columns 'X', 'Y', 'Label' (with the form '*:*:*'),
+            'Time', and 'blobID'; blobID, X, & Y must be numeric.
+        folderlist :  list
+            List of folder paths (as strings) associated with image sequences
+            described in blobdata
+        scale : int
+            How much to downsample the image by.
+
+        Returns :
+        ---------
+        None
+        """
+        self.foldernames = folderlist
+        self.blobdata = blobdata
+        self.scale = int(scale)
+
+        # Timelist contains times associated with images, in order.
+        self.timelist = sorted(list(set(blobdata['Time'].values)))
+        self.t = self.timelist[0]
+
+        # Create figure window and initialize axis (just to simplify code)
+        self.fig = plt.figure()
+        self.ax = self.fig.add_subplot(111)
+
+        # Connect user actions (key presses) with a function (self.wherenext)
+        self.useraction = self.fig.canvas.mpl_connect(
+            'key_press_event', self.wherenext)
+
+        # Initialize dicts to store file names (self.filedict), indices in
+        # blobdata df for blobs in each image (self.indsdict), and image data
+        # (self.imdict) as nparrays.
+        self.filedict = dict.fromkeys(self.timelist)
+        self.indsdict = dict.fromkeys(self.timelist)
+        self.imdict = dict.fromkeys(self.timelist)
+
+        # Go through times in timelist and get indices for blobs, filename
+        # and image
+        for loopt in self.timelist:
+            self.indsdict[loopt] = self.blobdata[self.blobdata['Time'] == loopt
+                                                 ].index.tolist()
+            self.filedict[loopt] = self.blobdata.loc[min(self.indsdict[loopt]),
+                                                     'Label'].rsplit(
+                                                     ':', 1)[1] + '.tif'
+            # Try to find filename for image at time loopt in each folder; stop
+            # when find it.
+            for myfolder in self.foldernames:
+                try:
+                    currentimage = tifmod.imread(myfolder +
+                                                 self.filedict[loopt])
+                except:
+                    continue
+                else:
+                    self.imdict[loopt] = currentimage[::self.scale,
+                                                      ::self.scale]
+                    break
+
+        # Create figure with first image and associated blobs.
+        self.showblobs()
+
+    def showblobs(self):
+        """
+        Update figure with image and blobs associated with time self.t
+
+        Parameters :
+        ------------
+        self : BlobViewer object
+
+        Returns :
+        ---------
+        None
+        """
+        self.ax.remove()
+        self.ax = self.fig.add_subplot(111)
+        self.ax.imshow(self.imdict[self.t], cmap='gray')
+        self.ax.set_title('Image: ' + self.filedict[self.t])
+        for ind in self.indsdict[self.t]:
+            self.ax.text(self.blobdata.loc[ind, 'X']/self.scale,
+                         self.blobdata.loc[ind, 'Y']/self.scale,
+                         int(self.blobdata.loc[ind, 'blobID']),
+                         color=(1, 1, 0))
+        plt.draw()
+
+    def wherenext(self, event):
+        """
+        Update self.t and show blobs and image associated with new self.t
+        based on user action (using connection created in __init__).
+        """
+        tind = self.timelist.index(self.t)
+        if event.inaxes:
+            if event.key == '.':
+                try:
+                    self.t = self.timelist[tind + 1]
+                except:
+                    self.t = self.timelist[0]
+                self.showblobs()
+            elif event.key == ',':
+                self.t = self.timelist[tind - 1]
+                self.showblobs()
+            elif event.key == 'c':
+                plt.close(self.fig)
+            else:
+                pass
 
 
 def seqprocess(infodf, ind, folder, scale):
@@ -91,7 +232,8 @@ def seqprocess(infodf, ind, folder, scale):
     """
     # Sequence directory name. Assumes data is in sub folder 'flattened'!
     seqfolder = folder + infodf.SetDir[ind
-                    ] + '\\' + infodf.SequenceDir[ind] + '\\flattened\\'
+                                       ] + '\\' + infodf.SequenceDir[ind
+                                       ] + '\\flattened\\'
     # Data file name
     seqfile = infodf.MyFile[ind]
     # QCam saves from 0 to n-1. 'end1' gives last frame (in QCams numbering) of
@@ -161,10 +303,21 @@ def seqprocess(infodf, ind, folder, scale):
     return curdata.drop(dropinds, axis=0)
 
 
+"""
+Read datafile with user-generated metadata about each image sequence and get
+user input for which sequence to process
+"""
 seqinfo = pandas.read_csv(infofile, delimiter='\t', header=2)
-
 imseq = input('Which image sequence to analyze?')
 
+"""
+Read in files associated with the seqence 'imseq'. For any sequence which are
+split into different parts, ask if should combine the parts.
+The get the trackmethod (whether to try to track blobs in images listed in
+infofile as 'moving'.
+Then process (and possibly combine) information from csv file containing info
+on blobs.
+"""
 try:
     seqind = list(seqinfo[seqinfo.Sequence == imseq].index)
     if len(seqind) > 1:
@@ -198,9 +351,13 @@ else:
         raise SystemExit('Invalid choice.')
 
 """
+Group data into image groups (in colum 'ImGroup' in curdata df). 
+If 'trackmethod' set to 'Auto' or 'Manual', just groups by media; if
+'trackmethod' set to 'cannot', this creates separate groups for different media
+and for each images marked as moving, so that no blob will be linked between
+groups.
 CURRENTLY SET TO IGNORE DIFFERENCE BETWEEN AUTO AND MANUAL.
 """
-
 if (trackmethod == 'Auto') | (trackmethod == 'Manual'):
     curdata['ImGroup'] = curdata['Media'].astype(int)
 elif trackmethod == 'Cannot':
@@ -227,35 +384,41 @@ elif trackmethod == 'Cannot':
 else:
     raise SystemExit('Invalid track method option')
 
+"""
+Link blobs in image groups (column 'ImGroup') using TrackPoints module
+"""
 TrackPoints.linkpoints(curdata, DataColumns=['X', 'Y'],
                        InfoColumns=['Time', 'Major'],
-                        GroupNameColumn='ImGroup', BlobNameColumn='blobID',
-                        name1=0, ColWeights=[1, 1])
+                       GroupNameColumn='ImGroup', BlobNameColumn='blobID',
+                       name1=0, ColWeights=[1, 1])
 
-# # Print XY and volume data for grouped blobs.
-# curgroups = curdata.groupby('blobID')
-# for name, group in curgroups:
-#     print(name)
-#     print(group[['Media', 'Time', 'X', 'Y', 'Volume']])
-
-## plot all linked blobs by x-y center.
-#fig, ax = plt.subplots()
-#colorlist = 'rgbcmyk'
-#markerlist = 'o^sx+D'
-#for k in set(curdata['blobID'].values.tolist()):
-#    dfsub = curdata[curdata['blobID']==k]
-#    colval = colorlist[k%len(colorlist)]
-#    markval = markerlist[k%len(markerlist)]
-#    ax.scatter(dfsub['X'].values, dfsub['Y'].values, color=colval,
-#               marker=markval, alpha=0.4)
-
-# plot all linked blobs by time-volume.
+"""
+Plot all linked blobs by time-volume.
+"""
 fig, ax = plt.subplots()
 colorlist = 'rgbcmyk'
 markerlist = 'o^sx+D'
 for k in set(curdata['blobID'].values.tolist()):
-    dfsub = curdata[curdata['blobID']==k]
-    colval = colorlist[int(k)%len(colorlist)]
-    markval = markerlist[int(k)%len(markerlist)]
-    ax.scatter(dfsub['Time'].values, dfsub['Volume'].values, color=colval,
-               marker=markval, alpha=0.4)
+    dfsub = curdata[curdata['blobID'] == k]
+    colval = colorlist[int(k) % len(colorlist)]
+    markval = markerlist[int(k) % len(markerlist)]
+    # Time of media change was between 0 and 1 minute after last frame in first
+    # media, therefore assign time of media change to midpoint (+30s), although
+    # the actual media change may have been a bit faster (not accounting for
+    # mixing time).
+    StartTime = curdata[curdata['Media'] == 0].Time.iloc[-1] + 30
+    ax.scatter((dfsub['Time'].values-StartTime)/60,
+               dfsub['Volume'].values/(100000),
+               color=colval, marker=markval, alpha=0.4)
+ax.set_ylim(bottom=0, top=50)
+ax.set_ylabel('Volume, nL')
+ax.set_xlabel('Time after media change, min')
+ax.set_title(imseq + ': cell volume over time')
+
+"""
+Create figure to check link among blobs.
+"""
+foldernames = [parentdir + seqinfo.loc[q, 'SetDir'] + '\\' +
+               seqinfo.loc[q, 'SequenceDir'] + '\\flattened\\'
+               for q in seqind]
+temp = BlobViewer(curdata, foldernames)
