@@ -51,7 +51,8 @@ calculating volumes instead of Feret's diameters?
 import numpy as np
 import pandas
 import scipy.stats as st
-import time, json
+import time
+import json
 
 ZygoteFiles = {'rib01': 'Results_CVR_rib01_MeasEmbV5_centroid_Processed.csv',
                'rib02': 'Results_CVR_rib02_MeasEmbV5_centroid_Processed.csv',
