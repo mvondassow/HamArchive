@@ -142,18 +142,43 @@ def GeneralizedESD(MyData, MaxNumOutliers, Alpha=0.05):
 
 def cit(myarray, interval=0.95):
     """
-    confidence interval for mean on myarray given t-distribution
+    confidence interval for mean of myarray, assuming t-distribution
 
-##    Parameters :
+    Parameters :
     ------------
+    myarray : 1D numpy.array, numeric
+    interval : float, 0<interval<1
+        width of confidence interval
 
 
-##    Returns :
+    Returns :
     ---------
+    dict :
+        keys : values
+            UB : upper bound of confidence interval for mean
+            LB : lower bound of confidence interval for mean
+            mean : mean of myarray
 
 ##    Example
     ----------
+    From Zar 1999 Biostatistical Analysis, p98, example 7.5 (data from p92,
+    example 7.1):
+    zar = np.array([25.8, 24.6, 26.1, 22.9, 25.1, 27.3, 24.0, 24.5, 23.9,
+    26.2, 24.3, 24.6, 23.3, 25.5, 28.1, 24.8, 23.5, 26.3, 25.4, 25.5, 23.9,
+    27.0, 24.8, 22.9, 25.4])
+    print(cit(zar, interval=0.95))
+    print(hs.cit(zar, interval=0.99))
 
+    Example output:
+    95% CI    {'mean': 25.028000000000002, 'UB': 25.581868755247811,
+               'LB': 24.474131244752193}
+    99% CI    {'mean': 25.028000000000002, 'UB': 25.778587955635746,
+               'LB': 24.277412044364258}
+    Zar's results:
+    95% CI: mean:25.03, LB: 24.47, UB: 25.59
+    99% CI: mean:25.03, LB: 24.27, UB: 25.79
+    Difference appears to be rounding error (my function gives same results
+    as Wolfram Alpha's calculator for both this data set and another one).
     """
     # Check that equivalent to one dim array
     if myarray.ndim == 1:
@@ -175,12 +200,22 @@ def cib(myarray, interval=0.95, quantile=0.5):
     binomial distribution, based on Conover, Practical Nonparametric Statistics
     1999, chapter 3.2 pp143-144
 
-##    Parameters :
+    Parameters :
     ------------
+    myarray : 1D numpy.array, numeric
+    interval : float, 0<interval<1
+        width of confidence interval
+    quantile : float, 0<quantile<1
+        quantile of data in my array whose confidence interval the function
+        should return
 
-
-##    Returns :
+    Returns :
     ---------
+    dict :
+        keys : values
+            UB : upper bound of confidence interval for quantile
+            LB : lower bound of confidence interval for quantile
+            median : median of myarray
 
     Example
     ----------
@@ -189,7 +224,10 @@ def cib(myarray, interval=0.95, quantile=0.5):
                         59.9, 63.7, 73.3,56.5,63.2,64.1,78.5])
     print(cib(conover, 0.95, quantile=0.75))
 
-##    Expected output: _____________
+    Expected output: 
+    Example output should be: 
+        {'UB': 73.299999999999997, 'LB': 63.299999999999997, 'median': 63.25}
+    Conover's result: UB = 73.3, LB = 63.3.
     """
     # Check that equivalent to one dim array
     if myarray.ndim == 1:

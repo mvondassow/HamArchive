@@ -7,7 +7,10 @@ Flattens all 48-bit RGB tiffs in a directory, and saves them in a new folder
 Saved as 16-bit tifs
 
 Functions:
-flatten48bitimages : flattens alls images in 
+flatten48bitimages : flattens all 16-bit RGB (48bit) images in a folder.
+
+2016Dec21: Modified to try to be more system-independent by using os.path.join:
+UPDATED VERSION NOT TESTED YET.
 
 @author: Michelangelo
 """
@@ -80,9 +83,8 @@ def flatten48bitimages(mydirname, **kwargs):
                         # For the life of me, I can't get this module to save
                         # metadata as it claims it will. Just saving in
                         # description.
-                        tifmod.imsave(mydirname + newfoldername + '\\' +
-                                      newfilename,
-                                      currentimage,
+                        tifmod.imsave(os.path.join(mydirname, newfoldername,
+                                      newfilename), currentimage,
                                       description=currentfile)
                     else:
                         print(currentfile + ' is not of the right type.')
@@ -114,15 +116,17 @@ def mynewfolder(mydirname, mynewfolder, maxk = 10):
     new folder name after incrementing (empty list - [] - if cannot create
     folder.)
     """
-    if os.path.exists(mydirname + mynewfolder):
+    if os.path.exists(os.path.join(mydirname, mynewfolder)):
         for k in range(maxk):
-            if not os.path.exists(mydirname + mynewfolder + str(k)):
+            if not os.path.exists(os.path.join(mydirname, mynewfolder, 
+                                               str(k))):
                 print(mynewfolder + ' already exists in this directory.')
                 response = input(
-                    'Make new folder ' + mynewfolder + str(k) + '? y/n')
+                    'Make new folder ' + os.path.join(mynewfolder, str(k)) +
+                    '? y/n')
                 if response is 'y' or response is 'Y':
-                    mynewfolder = mynewfolder + str(k)
-                    os.mkdir(mydirname + mynewfolder)
+                    mynewfolder = os.path.join(mynewfolder, str(k))
+                    os.mkdir(os.path.join(mydirname, mynewfolder))
                     break
                 elif response is 'n' or response is 'N':
                     mynewfolder = []
@@ -131,8 +135,8 @@ def mynewfolder(mydirname, mynewfolder, maxk = 10):
                     print('Invalid response, treated as n')
                     mynewfolder = []
                     break
-            elif os.path.exists(
-                    mydirname + mynewfolder + str(k)) and k == maxk-1:
+            elif os.path.exists(os.path.join(mydirname, mynewfolder, str(k))
+                                ) and k == maxk-1:
                 mynewfolder = []
                 print('Failed to create folder with unique name in '
                     + str(maxk) + ' tries')
@@ -141,7 +145,7 @@ def mynewfolder(mydirname, mynewfolder, maxk = 10):
                 continue
             break
     else:
-        os.mkdir(mydirname + mynewfolder)
+        os.mkdir(os.path.join(mydirname, mynewfolder))
 
     return mynewfolder
 
@@ -155,3 +159,4 @@ def mynewfolder(mydirname, mynewfolder, maxk = 10):
 #for k in range(len(myfolders)):
 #    flatten48bitimages(myfolders[k]+'\\')
 
+#flatten48bitimages(zygdir)

@@ -1,0 +1,33 @@
+"This text file contains information, formatted to initialize variables in Python, to deal with transitions in the time lapse sequences when the media was changed"											
+	Which part of multi-part image sequences.	Directory for developmental stage	Directory for specific ribbon	File containing output from ImageJ measurements	"Last image (integer value) of initial set of images (before media change). Qimaging software numbers images with first image labeled 0. For images without a first part, end1 set to -1."	First usable image of 2nd set (after media change). Qimaging software numbers images with first image labeled 0.	"List of periods in which embryos move, but measurements can be made. Sub-lists show first and last image of period (counting from 0)."	"Whether track embryos manually, automatically (move but close to each other), or no correspondance among embryos between moving images is possible."	"Use to join measurements of the same blob (embryo) that would not be joined by position because it moves too far. Contains a list of lists (one list per embryo). Where no joins possible shows -1, where auto tracking should be sufficient, shows [[]]."	Indices of measurements with a problem to be removed from final analyses.	
+Sequence	Part	SetDir	SequenceDir	MyFile	End1	Begin2	UseButMoving	TrackMethod	MeasIndexJoins	DeleteMeasInds	Notes
+rib07	1	CellVolumeRegulation_Cleavers	CVR_rib07_10x_2016Aug03_12_03___PM	Results_CVR_rib07_MeasEmbV5_centroid.xls	2	3	"[[3, 3]]"	Manual	"[[19, 23], [20, 24]]"	[]	
+rib08	1	CellVolumeRegulation_Cleavers	CVR_rib08_2016Aug03_01_17_51PMpart1	Results_CVR_rib08part1_MeasEmbV5_centroid.xls	2	5	[[]]	Auto	[[]]	[]	Could use embryos in Image 04 if set threshold manually for that image.
+rib08	2	CellVolumeRegulation_Cleavers	CVR_rib08_2016Aug03_02_10_06PMpart2	Results_CVR_rib08part2_MeasEmbV5_centroid.xls	-1	0	[[]]	Auto	[[]]	[]	Part 2 or rib08: No transition
+rib09	1	CellVolumeRegulation_Cleavers	CVR_rib09_2016Aug03_03_29_55PM	Results_CVR_rib09_MeasEmbV5_masked_centroid.xls	2	6	[[]]	Auto	[[]]	[]	"ImageJ macro finds embryos in image '05'. However, lighting changes a lot after media change so that the ROI expands at image '06'."
+rib10	1	CellVolumeRegulation_Cleavers	CVR_rib10_2016Aug03_07_30_04PM	Results_CVR_rib10_MeasEmbV5_centroid.xls	2	4	[[]]	Auto	[[]]	[18]	"Finds embryo for image 04, but embryo for measurement 18 is very blurry."
+rib11	1	CellVolumeRegulation_Cleavers	CVR_rib11_2016Aug03_08_47_15PM	Results_CVR_rib11_MeasEmbV5_centroid.xls	2	4	"[[4,5]]"	Manual	"[[23,27,31]]"	"[123,128,133,138,143,148,153,158,163,168,173,178,183,188,193,198,203,208,213,218,223,228,233,238,243,248,253,282]"	"One embryo shifted and changed size a bit to come in and out of contact with bounds of image (used by macro), so I marked its measurements for deletion to avoid biasing towards smaller embryo."
+rib12	1	CellVolumeRegulation_Cleavers	CVR_rib12_2016Aug03_10_07_48PM	Results_CVR_rib12_MeasEmbV5_masked_centroid.xls	2	3	[[]]	Auto	[[]]	[]	
+rib13	1	CellVolumeRegulation_Cleavers	CVR_rib13_2016Aug04_12_34_03 PM	Results_CVR_rib13_MeasEmbV5_centroid.xls	2	3	"[[3,7]]"	Manual	"[[17,22,27,32,37], [18,23,28, 33, 38, 43, 48]]"	[]	
+rib01	1	CellVolumeRegulation_Zygotes	CVR_rib01_10x_2016Aug02_04_49_19PM	Results_CVR_rib01_MeasEmbV5_centroid.xls	2	3	"[[3,3]]"	Cannot	-1	[]	"One embryo visible and measurable in image 03, but cannot identify it in the next images."
+rib02	1	CellVolumeRegulation_Zygotes	CVR_rib02_2016Aug02_06_08_18PM	Results_CVR_rib02_MeasEmbV5_centroid.xls	2	4	[[]]	Auto	[[]]	[]	
+rib03	1	CellVolumeRegulation_Zygotes	CVR_rib03_2016Aug02_07_26_18PM	Results_CVR_rib03_MeasEmbV5_centroid.xls	2	4	"[[4,11]]"	Manual	"[[20,23,26,29,32,35,38,41],[21,24,27,30,33,36,39,42],[22,25,28,31,34,37,40,43]]"	[]	
+rib04	1	CellVolumeRegulation_Zygotes	CVR_rib04_2016Aug02_08_42_53PM	Results_CVR_rib04_MeasEmbV5_centroid.xls	2	3	"[[0, 62]]"	Auto	-1	[]	"Embryos move in first sequence (before media change) and at two time periods after media change. The movements seem large enough to confuse kmeans clustering, but should be easy to handle for a well-designed particle tracking. Too many to list now, so just check if tracking works okay."
+rib05	1	CellVolumeRegulation_Zygotes	CVR_rib05_2016Aug02_10_50_09PM	Results_CVR_rib05_MeasEmbV5_masked_centroid.xls	2	4	[[]]	Auto	[[]]	[]	
+rib06	1	CellVolumeRegulation_Zygotes	CVR_rib06_2016Aug03_12_00_58AM	Results_CVR_rib06_MeasEmbV5_centroid.xls	2	4	"[[4,5]]"	Cannot	-1	[15]	"Embryos in image 04 cannot be identified in image 05, and those in image 05 cannot be identified in image 06 or beyond, but there are multiple of them in each image. Embryo in measurement index 15 is blurry."
+											
+											
+											
+											
+											
+											
+											
+											
+											
+											
+											
+											
+											
+											
+											
+											

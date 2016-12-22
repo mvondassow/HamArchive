@@ -21,6 +21,7 @@ Created on Sun Dec 18 15:10:04 2016
 @author: Michelangelo
 """
 import pandas
+import numpy as np
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 import time
@@ -47,7 +48,7 @@ print(consdata[['File', 'TmntCat', 'Salinity', 'Volume', 'SE_Volume'
                 ]].round(decimals={'Salinity': 0, 'Volume': 0, 'SE_Volume': 0,
                                  'InvSalinity': 3}))
 
-# %% Generate plots
+# Generate plots
 tmntgrps = consdata.groupby('TmntCat')
 # Plot groups (by 1/salinity)
 fig1, ax1 = plt.subplots()
@@ -71,23 +72,42 @@ ax2.set_xlabel('salinity, ppt')
 ax2.set_ylim((0, 350000))
 ax2.set_xlim(0, 200);
 
-# %% Analyze with linear regression
+# Analyze with linear regression
 y, X = dmatrices('Volume ~ TmntCat + InvSalinity + InvSalinity:TmntCat',
                  data=consdata, return_type='dataframe')
 mod = sm.OLS(y, X)  # Describe model
 regression_result = mod.fit()  # Fit model
 print(regression_result.summary())
 
-# %% Check for outliers (first term in dict is number of outliers)
+# Check for outliers (first term in dict is number of outliers)
 outlierresults = hs.GeneralizedESD(regression_result.resid.values, 10,
                                    Alpha=0.05)
 print('Number of outliers detected: ', outlierresults[0])
 print(pandas.DataFrame(outlierresults[1]))
 
-# %% Test if makes a difference if drop value with exceptionally high salinity
+# Test if makes a difference if drop value with exceptionally high salinity
 consdata2 = consdata.drop(consdata[consdata['File'] == 'Z14_meas.xls'].index)
 y2, X2 = dmatrices('Volume ~ TmntCat + InvSalinity + InvSalinity:TmntCat',
                    data=consdata2, return_type='dataframe')
 mod2 = sm.OLS(y2, X2)  # Describe model
 regression_result2 = mod2.fit()  # Fit model
 print(regression_result2.summary())
+
+# Plot with lines that were fit to all data.
+xlims = [0, 0.04]
+ax1.plot(xlims, regression_result.predict(np.array([[1, 0, xlims[0], 0],
+                                                    [1, 0, xlims[1], 0]]
+                                                    )), color='b')
+ax1.plot(xlims, regression_result.predict(np.array([[1, 1, xlims[0], xlims[0]],
+                                                    [1, 1, xlims[1], xlims[1]]]
+                                                    )), color='g')
+
+xlims = [0, 0.04]
+# # remove last two lines added
+# del ax1.lines[-2:]
+ax1.plot(xlims, regression_result2.predict(np.array([[1, 0, xlims[0], 0],
+                                                     [1, 0, xlims[1], 0]])),
+                                                     color='b')
+ax1.plot(xlims, regression_result2.predict(np.array([[1, 1, xlims[0], xlims[0]],
+                                                     [1, 1, xlims[1], xlims[1]]]
+                                                     )), color='g')

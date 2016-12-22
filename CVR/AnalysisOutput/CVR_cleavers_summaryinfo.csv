@@ -1,0 +1,8 @@
+,MinVolRatio,RecoveredFraction,FileName,TimeConstEst,MinDelay,TimeOfMinVol,TimeToCutoff
+0,0.667049390523,0.354786836277,CellVolumeRegulation_Processed\Results_CVR_rib07_MeasEmbV5_centroid_Processed.csv,1.0,1.0,2.0,2.0
+1,0.683588359011,0.426031767364,CellVolumeRegulation_Processed\Results_CVR_rib08part1_MeasEmbV5_centroid_Processed.csv,1.5,3.0,3.0,3.0
+2,0.704768914088,,CellVolumeRegulation_Processed\Results_CVR_rib09_MeasEmbV5_masked_centroid_Processed.csv,2.0,4.0,4.0,4.0
+3,0.746384924037,0.154572260184,CellVolumeRegulation_Processed\Results_CVR_rib10_MeasEmbV5_centroid_Processed.csv,1.50000000186,2.0,3.00000000373,3.00000000373
+4,0.648827620393,0.150016512808,CellVolumeRegulation_Processed\Results_CVR_rib11_MeasEmbV5_centroid_Processed.csv,1.0,2.0,3.0,2.0
+5,0.651551656842,0.154224877083,CellVolumeRegulation_Processed\Results_CVR_rib12_MeasEmbV5_masked_centroid_Processed.csv,0.5,1.0,6.0,1.0
+6,0.731821373786,0.174204617665,CellVolumeRegulation_Processed\Results_CVR_rib13_MeasEmbV5_centroid_Processed.csv,1.0,1.0,2.0,2.0

@@ -7,6 +7,7 @@ Created on Sun Dec 18 12:12:00 2016
 @author: Michelangelo
 """
 import json
+import os
 
 
 def savemydf(mydf, savefilename, extension):
@@ -26,9 +27,8 @@ def savemydf(mydf, savefilename, extension):
     while not saved:
         try:
             with open(savefilename + '.' + extension, 'r') as myfile:
-                pass
-            print(savefilename + ' already exists in this folder: NOT SAVED!')
-            again = input('Try again using new name? y/n')
+                print(savefilename + ' already exists in this folder: NOT SAVED!')
+                again = input('Try again using new name? y/n')
             if again == 'y':
                 savefilename = input('Enter new file name (w/o extension).')
             elif again == 'n':
@@ -41,9 +41,8 @@ def savemydf(mydf, savefilename, extension):
             mydf.to_csv(savefilename + '.' + extension)
             try:
                 with open(savefilename + '.' + extension, 'r') as myfile:
-                    pass
-                print(savefilename + '.' + extension + ' saved.')
-                saved = True
+                    print(savefilename + '.' + extension + ' saved.')
+                    saved = True
                 break
             except OSError:
                 print('File saving error.')
@@ -55,14 +54,66 @@ def savedictasjson(mydict, savefilename):
     """
     try:
         with open(savefilename, 'r') as myfile:
-            pass
-        print(savefilename + ' already exists in this folder: NOT SAVED!')
+            print(savefilename +
+                  ' already exists in this folder: NOT SAVED!')
     except OSError:
         with open(savefilename, 'w') as myfile:
             json.dump(mydict, myfile)
         try:
             with open(savefilename, 'r') as myfile:
-                pass
-            print(savefilename + ' saved.')
+                print(savefilename + ' saved.')
         except OSError:
             print('File saving error.')
+
+
+def mynewfolder(mydirname, mynewfolder, maxk=10):
+    """
+    Create a new directory in path 'mydirname. with name 'mynewfolder'. If
+    folder with name 'mynewfolder' already exists in 'mydirname', it asks to
+    create a new one, incrementing from 0 to maxk; stops if it reaches maxk.
+
+    Parameters:
+    ----------
+    mydirname : string
+        valid path name
+    mynewfolder : string
+        valid folder name
+    maxk : int
+
+    Returns:
+    ---------
+    new folder name after incrementing (empty list - [] - if cannot create
+    folder.)
+    """
+    if os.path.exists(os.path.join(mydirname, mynewfolder)):
+        print(mynewfolder + ' already exists in this directory.')
+        for k in range(maxk):
+            response = input(
+                    'Make new folder ' + mynewfolder + str(k) + '? y/n')
+            if response is 'y' or response is 'Y':
+                if os.path.exists(os.path.join(mydirname, mynewfolder +
+                                               str(k))):
+                    print(mynewfolder + str(k) +
+                          ' already exists in this directory.')
+                else:
+                    mynewfolder = mynewfolder + str(k)
+                    os.mkdir(os.path.join(mydirname, mynewfolder))
+                    break
+
+            elif response is 'n' or response is 'N':
+                mynewfolder = []
+                break
+            else:
+                print('Invalid response, treated as n')
+                mynewfolder = []
+                break
+
+        else:
+            mynewfolder = []
+            print('Failed to create folder with unique name in ' +
+                  str(maxk) + ' tries')
+
+    else:
+        os.mkdir(os.path.join(mydirname, mynewfolder))
+
+    return mynewfolder

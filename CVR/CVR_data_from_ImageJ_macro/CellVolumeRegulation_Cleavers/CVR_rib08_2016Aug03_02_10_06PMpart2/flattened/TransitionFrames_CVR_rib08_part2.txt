@@ -1,0 +1,9 @@
+# This text file contains information, formatted to initialize variables in Python, to deal with # transitions in video with media change.
+stageDir = 'CellVolumeRegulation_Cleavers'  # e.g. 'CellVolumeRegulation_Cleavers' or 'CellVolumeRegulation_Zygotes'
+ribbonDir = 'CVR_rib08_2016Aug03_02_10_06PMpart2'  # e.g. 'CVR_rib07_10x_2016Aug03_12_03___PM'
+myfile = 'Results_CVR_rib08part2_MeasEmbV5_centroid.xls'  # e.g. 'Results_CVR_rib07_MeasEmbV5_centroid.xls'
+end1 = None # end1 is last image (integer value) of initial set (before # media change)
+begin2 = 0  # begin2 is first usable image of 2nd set (after media change)
+Notes = 'Part 2: No transition'
+UseButMoving = []  # List images (integers) in which embryos move, but measurements can be made
+MeasIndexJoins = []  # Use to join measurements of the same blob (embryo) that wouldn't be joined by position because of movemnt. Contains a list of lists (one list per embryo).

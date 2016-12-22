@@ -46,6 +46,19 @@ Rib02: Noticable blip in calculated volume at ~image 15 because a tiny bit of
 debris got lumped into ROI... Maybe an argument for using fit elipse when
 calculating volumes instead of Feret's diameters?
 
+'''
+20 - 21 Dec 2016:
+Updated functions: transferred helper functions for CIs and saving output to
+hambits package. Updated to use os.path.join and relative paths rather than
+hard coding and using string joins for path names.
+
+CORRECTED CALCULATION OF TIME CONSTANT AND CUTOFF TIMES (to use 1-exp(-ntcs) in
+calculation of cutoff volume, and added a field to the data frame for when the
+volume passed the cutoff.
+
+Checked calculations manually for rib03 and rib13.
+'''
+
 @author: Michelangelo
 """
 import numpy as np
@@ -53,6 +66,14 @@ import pandas
 import scipy.stats as st
 import time
 import json
+
+import os, sys
+lib_path = os.path.abspath('..')
+sys.path.append(lib_path)
+import hambits.utils as hu
+import hambits.stats as hs
+
+DirectoryName = 'CellVolumeRegulation_Processed'
 
 ZygoteFiles = {'rib01': 'Results_CVR_rib01_MeasEmbV5_centroid_Processed.csv',
                'rib02': 'Results_CVR_rib02_MeasEmbV5_centroid_Processed.csv',
@@ -103,7 +124,12 @@ def cvrsummarydata(stagefiles, stagetransitions, params):
         FileName
         TimeConstUpper : upper bound on time constant
         VolRatio : min volume/max volume
-        RecoveredFraction : (vol(60s) - min(vol(t)))/(initial vol - min(vol(t))
+        RecoveredFraction : (vol(tmax)-min(vol(t)))/(initial vol-min(vol(t))
+        MinDelay : time between last image from first image group (in original
+            media) to time of first image in final image group: represents
+            minimum measurable delay time)
+        TimeToCutoff : Time after media change at which volume crosses
+            cutoff (cutoff = 1-e^(-ntcs); ntcs = number of time constants))
     """
     filekeys = sorted(stagefiles.keys())
     nkeys = len(filekeys)
@@ -144,8 +170,12 @@ def summarize(curfile, transitionimage, params):
         FileName
         TimeConstUpper : upper bound on time constant
         VolRatio : min volume/max volume
-        RecoveredFraction : (vol(60s) - min(vol(t)))/(initial vol - min(vol(t))
-        MinDelay : time of first
+        RecoveredFraction : (vol(tmax)-min(vol(t)))/(initial vol-min(vol(t))
+        MinDelay : time between last image from first image group (in original
+            media) to time of first image in final image group: represents
+            minimum measurable delay time)
+        TimeToCutoff : Time after media change at which volume crosses
+            cutoff (cutoff = 1-e^(-ntcs); ntcs = number of time constants)
     """
     metadatacols = ['Image', 'Media', 'ImGroup']
 
@@ -188,37 +218,39 @@ def summarize(curfile, transitionimage, params):
             # Maximum volume lost
             vollost = initialvol - minvol
 
-            # Calculate upper bound on time constant for volume loss.
-            # Cutoff volume for estimation of upper bound on time constant.
-            # transitionimage is last image in media 0. tcross is first image
-            # in which embryos have lost >=0.63 of maximum volume lost.
-            cutoffvol = initialvol - vollost*(1-np.exp(params['ntcs']))
-            # tcross is time when volume reaches cutoff volume.
-            tcross = min(times[volumes < cutoffvol])
+            # Calculate upper bound on time constant for volume loss based on
+            # time when volume passes cutoff.
+            # ttransition is time of last image in media 0. tcross is the time
+            # first image in which embryos have lost >= 1-e^(-ntcs) of the
+            # maximum volume lost.
+            cutoffvol = initialvol - vollost*(1 - np.exp(-params['ntcs']))
+            # tcross is between transition and frame that passes cutoffvol.
+            tcross = min(times[volumes < cutoffvol])-ttransition
 
             # tcub is upperbound on time constant
-            tcub = (tcross - ttransition)/params['ntcs']
+            tcub = tcross/params['ntcs']
 
             # Calculate minimum relative volume
             minrelvol = minvol/initialvol
 
             # Calculate fraction of volume regained.
-            try:
-                tend = ttransition + params['tmax']
-                tendind = findnearest(times, tend,
-                                      params['ipu']/2)
-                # find volume at tendind
+            tend = ttransition + params['tmax']
+            tendind = findnearest(times, tend,
+                                  params['ipu']/2)
+            # find volume at tendind
+            if np.isnan(tendind):
+                recfraction = np.nan
+            else:
                 endvol = volumes[tendind]
                 recfraction = (endvol - minvol)/vollost
-            except:
-                recfraction = np.nan
 
             # Calculate time between first usable frame in second media &
             # transition time
             mindelay = min(times)-ttransition
             return {'FileName': curfile, 'MinVolRatio': minrelvol,
                     'TimeConstEst': tcub, 'RecoveredFraction': recfraction,
-                    'TimeOfMinVol': tofmin, 'MinDelay': mindelay}
+                    'TimeOfMinVol': tofmin, 'MinDelay': mindelay,
+                    'TimeToCutoff': tcross}
 
 
 def findnearest(myarray, target, bounds):
@@ -235,108 +267,17 @@ def findnearest(myarray, target, bounds):
         return np.nan
 
 
-def cit(myarray, interval=0.95):
-    """
-    confidence interval for mean on myarray given t-distribution
-    """
-    # Check that equivalent to one dim array
-    if myarray.ndim == 1:
-        # remove nans
-        myarray2 = myarray[np.logical_not(np.isnan(myarray))]
-        # Calculate average
-        avg = np.mean(myarray2)
-        # Calculate confidence interval
-        lb, ub = st.t.interval(interval, len(myarray2)-1,
-                               loc=avg, scale=st.sem(myarray2))
-        return {'mean': avg, 'LB': lb, 'UB': ub}
-    else:
-        raise SystemExit('myarray should be 1 dimensional')
-
-
-def cib(myarray, interval=0.95, quantile=0.5):
-    """
-    confidence interval for quantile (default is median) on myarray given
-    binomial distribution, based on Conover, Practical Nonparametric Statistics
-    1999, chapter 3.2 pp143-144
-    """
-    # Check that equivalent to one dim array
-    if myarray.ndim == 1:
-        # remove nans and sort
-        myarray2 = np.sort(myarray[np.logical_not(np.isnan(myarray))])
-        # Calculate confidence interval
-        lbind, ubind = st.binom.interval(interval, len(myarray2)-1, quantile)
-        lb = myarray2[int(lbind)]
-        ub = myarray2[int(ubind)]
-        return {'median': np.median(myarray2), 'LB': lb, 'UB': ub}
-    else:
-        raise SystemExit('myarray should be 1 dimensional')
-
-## Test example from Conover p144-145
-#conover = np.array([46.9, 56.8, 63.3,67.1,47.2,59.2,63.4,67.7,49.1,59.9, 63.7, 
-#                    73.3,56.5,63.2,64.1,78.5])
-#print(cib(conover, 0.95, quantile=0.75))
-
-def savemydf(mydf, savefilename, extension):
-    """
-    Function to save mydf to tab separated CSV file.
-    
-    Parameters
-    ----------
-    mydf : dataframe
-    savefilename : string, name of file without extension
-    extension : string, name of extension
-    """
-    saved = False
-    while not saved:
-        try:
-            with open(savefilename + '.' + extension, 'r') as myfile:
-                pass
-            print(savefilename + ' already exists in this folder: NOT SAVED!')
-            again = input('Try again using new name? y/n')
-            if again == 'y':
-                savefilename = input('Enter new file name (w/o extension).')
-            elif again == 'n':
-                saved = True
-                break
-            else:
-                print('invalid entry. Try again.')
-                continue
-        except OSError:
-            mydf.to_csv(savefilename + '.' + extension)
-            try:
-                with open(savefilename + '.' + extension, 'r') as myfile:
-                    pass
-                print(savefilename + '.' + extension + ' saved.')
-                saved = True
-                break
-            except OSError:
-                print('File saving error.')
-
-
-def savedictasjson(mydict, savefilename):
-    """
-    Save ditionary as json file
-    """
-    try:
-        with open(savefilename, 'r') as myfile:
-            pass
-        print(savefilename + ' already exists in this folder: NOT SAVED!')
-    except OSError:
-        with open(savefilename, 'w') as myfile:
-            json.dump(mydict, myfile)
-        try:
-            with open(savefilename, 'r') as myfile:
-                pass
-            print(savefilename + ' saved.')
-        except OSError:
-            print('File saving error.')
+# Generate path to files.
+for item in [ZygoteFiles, CleaverFiles]:
+    for key in item:
+        item[key] = os.path.join(DirectoryName, item[key])
 
 
 # Generate summary data and save files
 ZygoteSummary = cvrsummarydata(ZygoteFiles, ZygoteTransitions, myparams)
-savemydf(ZygoteSummary, 'CVR_zygotes_summaryinfo', 'csv')
+hu.savemydf(ZygoteSummary, 'CVR_zygotes_summaryinfo', 'csv')
 CleaverSummary = cvrsummarydata(CleaverFiles, CleaverTransitions, myparams)
-savemydf(CleaverSummary, 'CVR_cleavers_summaryinfo', 'csv')
+hu.savemydf(CleaverSummary, 'CVR_cleavers_summaryinfo', 'csv')
 
 # Calculte CIs for parameters of interest and save in json format.
 savefilename = 'CVR_summary_data.json'
@@ -347,6 +288,10 @@ descriptions = {'RecoveredFraction': {'about':
                                 'ci method': 'T', 'ci interval': 0.95},
                 'TimeConstEst': {'about':
                                  'Upper bound on time constant for shrinkage',
+                                 'ci method': 'Bernoulli', 'ci interval': 0.95
+                                 },
+                'TimeToCutoff': {'About':
+                                 'Time when V reached cutoff',
                                  'ci method': 'Bernoulli', 'ci interval': 0.95
                                  }}
 
@@ -364,18 +309,13 @@ for item in (CleaverSummary, ZygoteSummary):
         mydata = pandas.to_numeric(item[key].values)
         if descriptions[key]['ci method'] == 'T':
             myinfo += [{key: [descriptions[key],
-                              cit(mydata, descriptions[key]['ci interval'])]}]
+                        hs.cit(mydata, descriptions[key]['ci interval'])]}]
         elif descriptions[key]['ci method'] == 'Bernoulli':
             myinfo += [{key: [descriptions[key],
-                              cib(mydata, descriptions[key]['ci interval'])]}]
+                        hs.cib(mydata, descriptions[key]['ci interval'])]}]
         else:
             print('problem with ', key)
-    savedictasjson(myinfo, myfilename)
+    hu.savedictasjson(myinfo, myfilename)
 
 
-"""
-23Nov2016: Checked calculations manually for rib08. But does it make sense to
-look at recovered fraction from time of transition, rather than time since min
-volume?
-Checked CIs in Excel
-"""
+

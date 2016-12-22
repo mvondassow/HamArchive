@@ -1,0 +1,2 @@
+This folder contains the xls (tab delimited files) and ROI files (zip archives) from analyzing the images in the CVR timelapses with ImageJ.
+I preserved the directory structure, but removed the original image files to avoid excess memory and bandwidth usage (they are backed up elsewhere). 
