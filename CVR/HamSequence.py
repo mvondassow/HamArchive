@@ -4,6 +4,14 @@ Created on Tue Oct 18 19:56:12 2016
 
 @author: Michelangelo
 
+'''
+2016 Dec 26: Discovered and corrected two errors in volume calculation: forgot
+to divide average diameter by 2 (i.e. sum_of_diameters/4), and missed a zero
+in conversion to nL for figure. Now converted to pL instead.
+
+Need to update to re-run.
+'''
+
 Group and analyze blobs (embryos) from ImageJ macro output, given information
 in info file. Put into dataframe 'curdata'; process, link blobs, and plot.
 
@@ -30,9 +38,9 @@ Modules/packages:
 
 Steps to process files from ImageJ results
 ------------------------------------------
-1) Get data in.
+1) Read data file and info file.
 
-2) Combine the following steps into one loop.
+2) Calculations on data and split or remove data based on info file.
  2a: Split 'Label' to get time stamps and file codes
  2b: Calculate volume
  2c: Divide data into two sets (before and after transition) and delete frames
@@ -57,10 +65,15 @@ import TrackPoints
 import matplotlib.pyplot as plt
 import skimage.external.tifffile as tifmod
 
+import os, sys
+lib_path = os.path.abspath('..')
+sys.path.append(lib_path)
+import hambits.utils as hu
+
 # Parent directory
 parentdir = 'C:\\Users\\Michelangelo\\Documents\\Ham\\'
 # Name of file with info about sequences
-infofile = parentdir + 'CellVolumeRegulation.txt'
+infofile = os.path.join(parentdir, 'CellVolumeRegulation.txt')
 
 # Scale in images
 MicronsPerPixel = 0.338774005
@@ -130,8 +143,8 @@ class BlobViewer:
             # when find it.
             for myfolder in self.foldernames:
                 try:
-                    currentimage = tifmod.imread(myfolder +
-                                                 self.filedict[loopt])
+                    currentimage = tifmod.imread(os.path.join(myfolder,
+                                                 self.filedict[loopt]))
                 except:
                     continue
                 else:
@@ -231,9 +244,8 @@ def seqprocess(infodf, ind, folder, scale):
     be combined depending on user input.
     """
     # Sequence directory name. Assumes data is in sub folder 'flattened'!
-    seqfolder = folder + infodf.SetDir[ind
-                                       ] + '\\' + infodf.SequenceDir[ind
-                                       ] + '\\flattened\\'
+    seqfolder = os.path.join(folder, infodf.SetDir[ind],
+                             infodf.SequenceDir[ind], 'flattened')
     # Data file name
     seqfile = infodf.MyFile[ind]
     # QCam saves from 0 to n-1. 'end1' gives last frame (in QCams numbering) of
@@ -254,7 +266,7 @@ def seqprocess(infodf, ind, folder, scale):
     """
 
     # import data from file
-    curdata = pandas.read_csv(seqfolder+seqfile, delimiter='\t')
+    curdata = pandas.read_csv(os.path.join(seqfolder, seqfile), delimiter='\t')
 
     # Replace ImageJ index column name (ImageJ labels as ' ') with 'IJind'
     newcolnames = dict(zip(curdata.columns, curdata.columns))
@@ -269,7 +281,7 @@ def seqprocess(infodf, ind, folder, scale):
 
     # Calculate volume in cubic micrometers.
     curdata['Volume'] = (4*np.pi/3)*(
-        scale*(curdata['Feret']+curdata['MinFeret'])/2)**3
+        scale*(curdata['Feret']+curdata['MinFeret'])/4)**3
 
     # Remove unusable rows.
     # ImageJ spits out column of indices starting from 1; because the data file
@@ -302,6 +314,10 @@ def seqprocess(infodf, ind, folder, scale):
 
     return curdata.drop(dropinds, axis=0)
 
+def savecurdata(datadf, infodf, ind):
+    if len(ind) > 0:
+        ind = ind[0]
+    newfile = infodf.MyFile[ind]
 
 """
 Read datafile with user-generated metadata about each image sequence and get
@@ -408,12 +424,14 @@ for k in set(curdata['blobID'].values.tolist()):
     # mixing time).
     StartTime = curdata[curdata['Media'] == 0].Time.iloc[-1] + 30
     ax.scatter((dfsub['Time'].values-StartTime)/60,
-               dfsub['Volume'].values/(100000),
+               dfsub['Volume'].values/(1000),
                color=colval, marker=markval, alpha=0.4)
-ax.set_ylim(bottom=0, top=50)
-ax.set_ylabel('Volume, nL')
+ax.set_ylim(bottom=0, top=600)
+ax.set_xlim(left=-10, right=70)
+ax.set_ylabel('Volume, pL')
 ax.set_xlabel('Time after media change, min')
 ax.set_title(imseq + ': cell volume over time')
+
 
 """
 Create figure to check link among blobs.
@@ -422,3 +440,13 @@ foldernames = [parentdir + seqinfo.loc[q, 'SetDir'] + '\\' +
                seqinfo.loc[q, 'SequenceDir'] + '\\flattened\\'
                for q in seqind]
 temp = BlobViewer(curdata, foldernames)
+
+"""
+Function to save curdata to tab separated CSV file.
+Too much of a fight to get matplotlib to display figures before going on to the
+rest of the script and fucking up.
+When ready, run: hu.savemydf(curdata, destfilename, destextension)
+"""
+destfilename = seqinfo.loc[seqind, 'MyFile'].values[0].split('.')[0] + \
+               '_Processed'
+destextension = 'csv'

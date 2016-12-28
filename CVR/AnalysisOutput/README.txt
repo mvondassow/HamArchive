@@ -9,7 +9,7 @@ Comma separated values files from data frame with columns :
     VolRatio : min volume/max volume
     RecoveredFraction : 
     MinDelay : time between last image from first image group (in original media) to time of first image in final image group: represents minimum measurable delay time)
-    TimeToCutoff : Time after media change at which volume crosses cutoff (cutoff volume = min volume + (initial volume - min volume)*1-e^(-ntcs); ntcs = number of time constants; fOR ntcs = 2 -- as used for files created on 2016Dec21 -- this corresponds to the volume falling >/=86.5% of the way to the minimum volume).
+    TimeToCutoff : Time after media change at which volume crosses cutoff (cutoff volume = min volume + (initial volume - min volume)*1-e^(-ntcs); ntcs = number of time constants; fOR ntcs = 2 -- as used for files created on 2016Dec27 -- this corresponds to the volume falling >/=86.5% of the way to the minimum volume).
 
 Due to a quirk in the Pandas package, the columns are not ordered in the obvious way.
 
